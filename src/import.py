@@ -15,7 +15,7 @@ def main():
         con = cql.connect('localhost', 9160, 'fav_test', cql_version='3.0.0')
         print ("Connected!")
         cursor = con.cursor()
-        CQLString = "INSERT INTO event_attend (event_id, event_type, event_user_id) VALUES (131, 'Party', 3156);"
+        CQLString = "INSERT INTO favourites (user_id, song_id, rownum) VALUES (131, 81, 15);"
         cursor.execute(CQLString)
     finally:
         if cursor : cursor.close()
