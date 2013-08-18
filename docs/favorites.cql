@@ -4,3 +4,13 @@ CREATE TABLE favorites (
     rownum bigint,
     PRIMARY KEY (user_id, song_id, rownum) 
 );
+
+CREATE TABLE user_favs (
+    user_id bigint PRIMARY KEY, 
+    songs set<bigint>
+);
+
+CREATE TABLE song_favs (
+    song_id bigint PRIMARY KEY, 
+    users set<bigint>
+);
