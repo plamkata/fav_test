@@ -1,4 +1,4 @@
-CREATE TABLE favourites (
+CREATE TABLE favorites (
     user_id bigint, 
     song_id bigint, 
     rownum bigint,
