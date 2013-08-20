@@ -7,25 +7,43 @@ Created on Aug 18, 2013
 import cql
 import time
 
-def data_stream(limit_num=100000):
+def data_stream(row_limit_num=100000):
     path = '/Users/paleksandrov/Documents/SoundCloud/Cassandra/Data/favoritings.csv'
     
     with open(path, 'rb') as csvfile:
-        rownum = 0
+        row_num = 0
         
         # Skip header
         next(csvfile)
         for line in csvfile:
-            # print str(rownum) + ',' + line
+            # print str(row_num) + ',' + line
             data = line.split(',', 1)
             
             try:
-                yield [data, rownum]
+                yield [data, row_num]
             except Exception, e:
                 print str(e)
             finally:
-                rownum += 1
-                if (limit_num != 0 and rownum >= limit_num) : break
+                row_num += 1
+                if (row_limit_num != 0 and row_num >= row_limit_num) : break
+                
+def batch_stream(batch_size=1000):
+    batch_strings = []
+    
+    for chunk in data_stream():
+        data = chunk[0]
+        row_num = chunk[1]
+        
+        cql_string = "INSERT INTO favorites (user_id, song_id) VALUES ({0}, {1})\n"
+        cql_string = cql_string.format(long(data[0]), long(data[1]))
+        batch_strings.append(cql_string)
+        
+        if ((row_num + 1) % batch_size == 0) : 
+            yield [''.join(batch_strings), len(batch_strings), row_num]
+            batch_strings = []
+            
+    if (batch_strings) :
+        yield ''.join(batch_strings);
 
 def main():
     con = None
@@ -37,22 +55,20 @@ def main():
         
         # TODO (paleksandrov): Benchmark
         begin = time.clock()
-        rownum = 0
+        row_num = 0
         success_count = 0
-        for chunk in data_stream() :
-            data = chunk[0]
-            rownum = chunk[1]
-            
-            cql_string = "INSERT INTO favorites (user_id, song_id) VALUES ({0}, {1});"
-            cql_string = cql_string.format(long(data[0]), long(data[1]))
+        
+        for batch in batch_stream():
+            cql_string = "BEGIN BATCH\n" + batch[0] + "APPLY BATCH;"
             cursor.execute(cql_string)
+            row_num = batch[2];
             
-            success_count += 1
+            success_count += batch[1]
             
         end = time.clock()
             
         print "Successfully inserted {0} favs with {1} failures in {2} sec.\n". \
-            format(rownum + 1, rownum + 1 - success_count, end - begin)
+            format(row_num + 1, row_num + 1 - success_count, end - begin)
     
     except Exception, e:
         print "Error occurred: " + str(e)
