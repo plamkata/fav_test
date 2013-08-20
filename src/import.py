@@ -12,7 +12,6 @@ def data_stream(limit_num=100000):
     
     with open(path, 'rb') as csvfile:
         rownum = 0
-        fails = 0
         
         # Skip header
         next(csvfile)
@@ -21,9 +20,9 @@ def data_stream(limit_num=100000):
             data = line.split(',', 1)
             
             try:
-                yield [data, rownum, fails]
-            except:
-                fails += 1
+                yield [data, rownum]
+            except Exception, e:
+                print str(e)
             finally:
                 rownum += 1
                 if (limit_num != 0 and rownum >= limit_num) : break
@@ -39,20 +38,24 @@ def main():
         # TODO (paleksandrov): Benchmark
         begin = time.clock()
         rownum = 0
-        fails = 0
+        success_count = 0
         for chunk in data_stream() :
             data = chunk[0]
             rownum = chunk[1]
-            fails = chunk[2]
             
-            cql_string = "INSERT INTO favorites1 (user_id, song_id, rownum) VALUES ({0}, {1}, {2});"
-            cql_string = cql_string.format(long(data[0]), long(data[1]), rownum)
+            cql_string = "INSERT INTO favorites (user_id, song_id) VALUES ({0}, {1});"
+            cql_string = cql_string.format(long(data[0]), long(data[1]))
             cursor.execute(cql_string)
+            
+            success_count += 1
             
         end = time.clock()
             
         print "Successfully inserted {0} favs with {1} failures in {2} sec.\n". \
-            format(rownum + 1, fails, end - begin)
+            format(rownum + 1, rownum + 1 - success_count, end - begin)
+    
+    except Exception, e:
+        print "Error occurred: " + str(e)
     finally:
         if cursor : cursor.close()
         if con : con.close()
