@@ -5,10 +5,30 @@ Created on Aug 18, 2013
 @author: paleksandrov
 '''
 import cql
+import time
+
+def data_stream(limit_num=100000):
+    path = '/Users/paleksandrov/Documents/SoundCloud/Cassandra/Data/favoritings.csv'
+    
+    with open(path, 'rb') as csvfile:
+        rownum = 0
+        fails = 0
+        
+        # Skip header
+        next(csvfile)
+        for line in csvfile:
+            # print str(rownum) + ',' + line
+            data = line.split(',', 1)
+            
+            try:
+                yield [data, rownum, fails]
+            except:
+                fails += 1
+            finally:
+                rownum += 1
+                if (limit_num != 0 and rownum >= limit_num) : break
 
 def main():
-    path = '/Users/paleksandrov/Documents/SoundCloud/Cassandra/Data/favoritings.csv'
-        
     con = None
     cursor = None
     try:
@@ -17,23 +37,22 @@ def main():
         cursor = con.cursor()
         
         # TODO (paleksandrov): Benchmark
-        with open(path, 'rb') as csvfile:
-            rownum = 0
+        begin = time.clock()
+        rownum = 0
+        fails = 0
+        for chunk in data_stream() :
+            data = chunk[0]
+            rownum = chunk[1]
+            fails = chunk[2]
             
-            # Skip header
-            next(csvfile)
-            for line in csvfile:
-                # print str(rownum) + ',' + line
-                data = line.split(',', 1)
-                    
-                cql_string = "INSERT INTO favorites (user_id, song_id, rownum) VALUES ({0}, {1}, {2});"
-                cql_string = cql_string.format(long(data[0]), long(data[1]), rownum)
-                cursor.execute(cql_string)
+            cql_string = "INSERT INTO favorites1 (user_id, song_id, rownum) VALUES ({0}, {1}, {2});"
+            cql_string = cql_string.format(long(data[0]), long(data[1]), rownum)
+            cursor.execute(cql_string)
             
-                rownum += 1
-                if (rownum >= 100) : break
+        end = time.clock()
             
-            print "Successfully inserted {0} favs\n".format(rownum)
+        print "Successfully inserted {0} favs with {1} failures in {2} sec.\n". \
+            format(rownum + 1, fails, end - begin)
     finally:
         if cursor : cursor.close()
         if con : con.close()
