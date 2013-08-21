@@ -63,7 +63,8 @@ def connect_cql():
 def main():
     for cursor in connect_cql() :
         # Benchmark
-        begin = time.clock()
+        begin_c = time.clock()
+        begin_t = time.time()
         
         row_num = 0
         batch_num = 0
@@ -85,14 +86,13 @@ def main():
                 
                 # report progress on 1000 batches
                 if (batch_num % 1000 == 0) :
-                    print "Processed {0} batches and {1} favs with {2} failures in {3} sec.". \
+                    print "Processed {0} batches and {1} favs with {2} failures in {3} sec [real {4} sec].". \
                         format(batch_num, row_num + 1, row_num + 1 - success_count, 
-                               time.clock() - begin)
-            
-        end = time.clock()
-            
-        print "Successfully inserted {0} favs with {1} failures in {2} sec.\n". \
-            format(row_num + 1, row_num + 1 - success_count, end - begin)
+                               time.clock() - begin_c, time.time() - begin_t)
+        
+        print "Successfully inserted {0} favs with {1} failures in {2} sec [real {3} sec].\n". \
+            format(row_num + 1, row_num + 1 - success_count, 
+                   time.clock() - begin_c, time.time() - begin_t)
 
 if __name__ == '__main__':
     main()
